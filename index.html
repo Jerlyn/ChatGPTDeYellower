@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT DeYellower - Remove Yellow Tints from AI Images</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-purple: #36069A;
+            --primary-pink: #DE6399;
+            --primary-dark: #020C28;
+            --neutral-light: #F8F9FA;
+            --neutral-dark: #212529;
+            --neutral-medium: #6C757D;
+            --neutral-border: #ADB5BD;
+        }
+
+        body {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--neutral-light) 0%, #ffffff 100%);
+            margin: 0;
+            min-height: 100vh;
+            color: var(--neutral-dark);
+            letter-spacing: -0.025em;
+            font-feature-settings: "kern" 1;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(54, 6, 154, 0.1);
+            padding: 1.5rem;
+            max-width: 1400px;
+            width: 100%;
+            margin: 1.5rem auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .header {
+            text-align: center;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--neutral-light);
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: var(--neutral-medium);
+            font-weight: 400;
+            margin: 0;
+            letter-spacing: -0.01em;
+        }
+
+        .upload-area {
+            border: 3px dashed var(--neutral-border);
+            border-radius: 1rem;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--neutral-light);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-area:hover,
+        .upload-area.drag-over {
+            border-color: var(--primary-purple);
+            background: rgba(54, 6, 154, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .upload-area:focus-within {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+
+        .upload-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-purple);
+        }
+
+        .upload-text {
+            font-size: 1.25rem;
+            color: var(--neutral-dark);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .upload-subtext {
+            font-size: 1rem;
+            color: var(--neutral-medium);
+            margin-bottom: 2rem;
+        }
+
+        .choose-file-btn {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            color: #ffffff;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(54, 6, 154, 0.3);
+        }
+
+        .choose-file-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(54, 6, 154, 0.4);
+        }
+
+        .choose-file-btn:focus {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+
+        .image-processing-area {
+            display: none;
+            grid-template-columns: 1fr 0.6fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .image-processing-area.compare-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr 0.6fr;
+        }
+
+        .image-display {
+            background: var(--neutral-light);
+            border: 1px solid var(--neutral-border);
+            border-radius: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            min-height: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-display.hidden {
+            display: none;
+        }
+
+        .image-display canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+        }
+
+        .image-label {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: var(--primary-dark);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        .adjustments-panel {
+            background: var(--neutral-light);
+            border: 1px solid var(--neutral-border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: fit-content;
+        }
+
+        .adjustments-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .adjustments-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .preset-controls {
+            display: flex;
+            gap: 0.375rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid var(--neutral-border);
+            background: white;
+            color: var(--neutral-dark);
+            letter-spacing: -0.01em;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--primary-purple);
+            color: var(--primary-purple);
+        }
+
+        .preset-btn:focus {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+
+        .control-btn {
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid var(--neutral-border);
+            background: white;
+            color: var(--neutral-dark);
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .control-btn:hover {
+            border-color: var(--primary-purple);
+            color: var(--primary-purple);
+        }
+
+        .control-btn:focus {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+
+        .control-btn.active {
+            background: var(--primary-purple);
+            color: white;
+            border-color: var(--primary-purple);
+        }
+
+        .adjustment-control {
+            margin-bottom: 1rem;
+        }
+
+        .adjustment-control label {
+            display: block;
+            font-weight: 500;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            letter-spacing: -0.01em;
+        }
+
+        .adjustment-control input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: var(--neutral-border);
+            border-radius: 5px;
+            outline: none;
+            transition: all 0.2s;
+            -webkit-appearance: none;
+        }
+
+        .adjustment-control input[type="range"]:focus {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+
+        .adjustment-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(54, 6, 154, 0.3);
+        }
+
+        .adjustment-control input[type="range"]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .adjustment-hint {
+            font-size: 0.8rem;
+            color: var(--neutral-medium);
+            margin-top: 0.25rem;
+            font-style: normal;
+            letter-spacing: -0.005em;
+            line-height: 1.3;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .action-buttons button {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.375rem;
+            border: none;
+            letter-spacing: -0.01em;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(54, 6, 154, 0.3);
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(54, 6, 154, 0.4);
+        }
+
+        .download-btn:focus {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+
+        .upload-new-btn {
+            background: white;
+            color: var(--primary-dark);
+            border: 1px solid var(--neutral-border);
+        }
+
+        .upload-new-btn:hover {
+            border-color: var(--primary-purple);
+            color: var(--primary-purple);
+            transform: translateY(-1px);
+        }
+
+        .upload-new-btn:focus {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Loading state */
+        .loading {
+            position: relative;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            margin: -20px 0 0 -20px;
+            border: 3px solid var(--neutral-border);
+            border-top-color: var(--primary-purple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 1024px) {
+            .image-processing-area {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .image-processing-area.compare-view {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .image-processing-area.compare-view #originalImageDisplay,
+            .image-processing-area.compare-view #processedImageDisplay {
+                display: flex !important;
+            }
+            
+            .image-display {
+                min-height: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+                margin: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-area {
+                padding: 2rem 1rem;
+            }
+            
+            .adjustments-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .preset-controls,
+            .header-controls {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .container {
+                border: 2px solid var(--neutral-dark);
+            }
+            
+            .upload-area {
+                border-width: 3px;
+            }
+            
+            .image-display {
+                border-width: 3px;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>ChatGPT DeYellower</h1>
+            <p>Remove yellow tints and adjust colors in your AI-generated images with professional-grade controls</p>
+        </header>
+
+        <main>
+            <div id="uploadContainer" class="upload-area" 
+                 role="button" 
+                 tabindex="0" 
+                 aria-label="Upload image area. Click to select file or drag and drop an image here">
+                <input type="file" 
+                       id="imageUpload" 
+                       accept="image/*" 
+                       class="sr-only"
+                       aria-describedby="upload-instructions">
+                <div class="upload-icon" aria-hidden="true">📸</div>
+                <p class="upload-text">Drop your image here or click to upload</p>
+                <p class="upload-subtext" id="upload-instructions">Supports PNG, JPG, JPEG, GIF, and WebP files up to 10MB</p>
+                <button type="button" class="choose-file-btn" onclick="document.getElementById('imageUpload').click()">
+                    Choose File
+                </button>
+            </div>
+
+            <div id="imageProcessingContainer" class="image-processing-area" role="region" aria-label="Image editing interface">
+                <div id="originalImageDisplay" class="image-display hidden" role="img" aria-label="Original image before editing">
+                    <span class="image-label">Before</span>
+                    <canvas id="originalCanvas" aria-hidden="true"></canvas>
+                </div>
+
+                <div id="processedImageDisplay" class="image-display" role="img" aria-label="Edited image with current adjustments">
+                    <span id="processedImageLabel" class="image-label">Edited Image</span>
+                    <canvas id="processedCanvas" aria-hidden="true"></canvas>
+                </div>
+
+                <aside class="adjustments-panel" role="region" aria-label="Image adjustment controls">
+                    <div class="adjustments-header">
+                        <h3>Adjustments</h3>
+                        <div class="header-controls">
+                            <button id="hideCompareBtn" class="control-btn hidden" aria-pressed="false">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 18V5l12-2v13"></path>
+                                    <circle cx="6" cy="14" r="3"></circle>
+                                    <circle cx="18" cy="8" r="3"></circle>
+                                </svg>
+                                Hide Compare
+                            </button>
+                            <button id="showCompareBtn" class="control-btn" aria-pressed="false">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M12 1v6m0 6v6"></path>
+                                    <path d="m15 9-3 3 3 3"></path>
+                                    <path d="m9 9 3 3-3 3"></path>
+                                </svg>
+                                Compare
+                            </button>
+                            <button id="resetBtn" class="control-btn" title="Reset adjustments to default values">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                                    <path d="M21 3v5h-5"></path>
+                                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                                    <path d="M3 21v-5h5"></path>
+                                </svg>
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="preset-controls" role="group" aria-label="Preset adjustment buttons">
+                        <button class="preset-btn" data-preset="remove-yellow" title="Quickly remove yellow tint from AI-generated images">
+                            Remove Yellow Tint
+                        </button>
+                        <button class="preset-btn" data-preset="enhance-portrait" title="Optimize settings for portrait images">
+                            Enhance Portrait
+                        </button>
+                        <button class="preset-btn" data-preset="brighten-image" title="Brighten and enhance contrast">
+                            Brighten Image
+                        </button>
+                    </div>
+
+                    <div role="group" aria-label="Manual adjustment controls">
+                        <div class="adjustment-control">
+                            <label for="temperature">
+                                Temperature: <span id="temperatureValue" aria-live="polite">0</span>
+                            </label>
+                            <input type="range" 
+                                   id="temperature" 
+                                   min="-100" 
+                                   max="100" 
+                                   value="0" 
+                                   aria-describedby="temperature-hint"
+                                   aria-valuemin="-100"
+                                   aria-valuemax="100"
+                                   aria-valuenow="0">
+                            <p class="adjustment-hint" id="temperature-hint">
+                                Remove yellow tint (positive values cool the image, negative values warm it)
+                            </p>
+                        </div>
+
+                        <div class="adjustment-control">
+                            <label for="saturation">
+                                Saturation: <span id="saturationValue" aria-live="polite">0</span>
+                            </label>
+                            <input type="range" 
+                                   id="saturation" 
+                                   min="-100" 
+                                   max="100" 
+                                   value="0"
+                                   aria-describedby="saturation-hint"
+                                   aria-valuemin="-100"
+                                   aria-valuemax="100"
+                                   aria-valuenow="0">
+                            <p class="adjustment-hint" id="saturation-hint">
+                                Adjust color intensity (positive values increase vibrancy)
+                            </p>
+                        </div>
+
+                        <div class="adjustment-control">
+                            <label for="brightness">
+                                Brightness: <span id="brightnessValue" aria-live="polite">0</span>
+                            </label>
+                            <input type="range" 
+                                   id="brightness" 
+                                   min="-100" 
+                                   max="100" 
+                                   value="0"
+                                   aria-describedby="brightness-hint"
+                                   aria-valuemin="-100"
+                                   aria-valuemax="100"
+                                   aria-valuenow="0">
+                            <p class="adjustment-hint" id="brightness-hint">
+                                Adjust overall brightness of the image
+                            </p>
+                        </div>
+
+                        <div class="adjustment-control">
+                            <label for="contrast">
+                                Contrast: <span id="contrastValue" aria-live="polite">0</span>
+                            </label>
+                            <input type="range" 
+                                   id="contrast" 
+                                   min="-100" 
+                                   max="100" 
+                                   value="0"
+                                   aria-describedby="contrast-hint"
+                                   aria-valuemin="-100"
+                                   aria-valuemax="100"
+                                   aria-valuenow="0">
+                            <p class="adjustment-hint" id="contrast-hint">
+                                Adjust difference between light and dark areas
+                            </p>
+                        </div>
+
+                        <div class="adjustment-control">
+                            <label for="hue">
+                                Hue Shift: <span id="hueValue" aria-live="polite">0°</span>
+                            </label>
+                            <input type="range" 
+                                   id="hue" 
+                                   min="-180" 
+                                   max="180" 
+                                   value="0"
+                                   aria-describedby="hue-hint"
+                                   aria-valuemin="-180"
+                                   aria-valuemax="180"
+                                   aria-valuenow="0">
+                            <p class="adjustment-hint" id="hue-hint">
+                                Shift colors around the color wheel
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button id="downloadImageBtn" class="download-btn" type="button" aria-describedby="download-description">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                            Download Image
+                        </button>
+                        <span id="download-description" class="sr-only">Download the edited image as a PNG file</span>
+                        
+                        <button id="uploadNewImageBtn" class="upload-new-btn" type="button" title="Start over with a new image">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                            </svg>
+                            Start Over
+                        </button>
+                    </div>
+                </aside>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DOM element references
+        const imageUpload = document.getElementById('imageUpload');
+        const uploadContainer = document.getElementById('uploadContainer');
+        const imageProcessingContainer = document.getElementById('imageProcessingContainer');
+        const originalImageDisplay = document.getElementById('originalImageDisplay');
+        const processedImageDisplay = document.getElementById('processedImageDisplay');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const processedCanvas = document.getElementById('processedCanvas');
+        const originalCtx = originalCanvas.getContext('2d');
+        const processedCtx = processedCanvas.getContext('2d');
+
+        // Control elements
+        const temperatureControl = document.getElementById('temperature');
+        const saturationControl = document.getElementById('saturation');
+        const brightnessControl = document.getElementById('brightness');
+        const contrastControl = document.getElementById('contrast');
+        const hueControl = document.getElementById('hue');
+
+        // Value display elements
+        const temperatureValue = document.getElementById('temperatureValue');
+        const saturationValue = document.getElementById('saturationValue');
+        const brightnessValue = document.getElementById('brightnessValue');
+        const contrastValue = document.getElementById('contrastValue');
+        const hueValue = document.getElementById('hueValue');
+
+        // Button elements
+        const processedImageLabel = document.getElementById('processedImageLabel');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadImageBtn = document.getElementById('downloadImageBtn');
+        const uploadNewImageBtn = document.getElementById('uploadNewImageBtn');
+        const hideCompareBtn = document.getElementById('hideCompareBtn');
+        const showCompareBtn = document.getElementById('showCompareBtn');
+
+        // Preset buttons
+        const presetButtons = document.querySelectorAll('.preset-btn');
+
+        let originalImage = new Image();
+        let originalWidth = 0;
+        let originalHeight = 0;
+        let displayWidth = 0;
+        let displayHeight = 0;
+        let resizeListener = null;
+
+        // Current adjustment values
+        let adjustments = {
+            temperature: 0,
+            saturation: 0,
+            brightness: 0,
+            contrast: 0,
+            hue: 0
+        };
+
+        // Preset configurations (adjusted temperature for removing yellow)
+        const presets = {
+            'remove-yellow': {
+                temperature: 25, // Positive value cools (reduces yellow)
+                saturation: -10,
+                brightness: 5,
+                contrast: 10,
+                hue: -10 // Slight hue shift to counter yellow
+            },
+            'enhance-portrait': {
+                temperature: 5,
+                saturation: 15,
+                brightness: 8,
+                contrast: 15,
+                hue: 0
+            },
+            'brighten-image': {
+                temperature: 0,
+                saturation: 5,
+                brightness: 20,
+                contrast: 25,
+                hue: 0
+            }
+        };
+
+        // Update adjustment values and UI
+        function updateAdjustmentValues() {
+            temperatureValue.textContent = adjustments.temperature;
+            saturationValue.textContent = adjustments.saturation;
+            brightnessValue.textContent = adjustments.brightness;
+            contrastValue.textContent = adjustments.contrast;
+            hueValue.textContent = adjustments.hue + '°';
+
+            temperatureControl.value = adjustments.temperature;
+            saturationControl.value = adjustments.saturation;
+            brightnessControl.value = adjustments.brightness;
+            contrastControl.value = adjustments.contrast;
+            hueControl.value = adjustments.hue;
+
+            // Update aria-valuenow attributes for accessibility
+            temperatureControl.setAttribute('aria-valuenow', adjustments.temperature);
+            saturationControl.setAttribute('aria-valuenow', adjustments.saturation);
+            brightnessControl.setAttribute('aria-valuenow', adjustments.brightness);
+            contrastControl.setAttribute('aria-valuenow', adjustments.contrast);
+            hueControl.setAttribute('aria-valuenow', adjustments.hue);
+        }
+
+        // Apply image filters
+        function applyFilters(ctx, imgData, adjustments) {
+            const data = imgData.data;
+            const temp = adjustments.temperature / 100; // Range -1 to 1
+            const sat = 1 + adjustments.saturation / 100;
+            const bright = 1 + adjustments.brightness / 100;
+            const cont = 1 + adjustments.contrast / 100;
+            const hue = adjustments.hue * Math.PI / 180;
+
+            const cosHue = Math.cos(hue);
+            const sinHue = Math.sin(hue);
+
+            // Process each pixel
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+
+                // Apply brightness and contrast
+                r = (r - 128) * cont + 128 * bright;
+                g = (g - 128) * cont + 128 * bright;
+                b = (b - 128) * cont + 128 * bright;
+
+                // Apply saturation
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                r = gray + (r - gray) * sat;
+                g = gray + (g - gray) * sat;
+                b = gray + (b - gray) * sat;
+
+                // Apply temperature (cooling: reduce red, increase blue)
+                r = r - (temp * 255 * 0.3); // Reduce red to remove yellow
+                b = b + (temp * 255 * 0.3); // Increase blue to cool
+
+                // Apply hue rotation
+                if (hue !== 0) {
+                    const M = [
+                        [0.299 + 0.701 * cosHue + 0.167 * sinHue, 0.587 - 0.587 * cosHue + 0.330 * sinHue, 0.114 - 0.114 * cosHue - 0.497 * sinHue],
+                        [0.299 - 0.299 * cosHue - 0.167 * sinHue, 0.587 + 0.413 * cosHue + 0.034 * sinHue, 0.114 - 0.114 * cosHue + 0.125 * sinHue],
+                        [0.299 - 0.299 * cosHue + 0.833 * sinHue, 0.587 - 0.587 * cosHue - 0.167 * sinHue, 0.114 + 0.886 * cosHue + 0.833 * sinHue]
+                    ];
+
+                    const newR = r * M[0][0] + g * M[0][1] + b * M[0][2];
+                    const newG = r * M[1][0] + g * M[1][1] + b * M[1][2];
+                    const newB = r * M[2][0] + g * M[2][1] + b * M[2][2];
+
+                    r = newR;
+                    g = newG;
+                    b = newB;
+                }
+
+                // Clamp values and apply to pixel data
+                data[i] = Math.min(255, Math.max(0, r));
+                data[i + 1] = Math.min(255, Math.max(0, g));
+                data[i + 2] = Math.min(255, Math.max(0, b));
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // Set canvas to original image dimensions
+        function setCanvasToOriginalSize(canvas, image) {
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            originalWidth = image.naturalWidth;
+            originalHeight = image.naturalHeight;
+        }
+
+        // Calculate display size maintaining aspect ratio with min-height
+        function calculateDisplaySize(imageWidth, imageHeight) {
+            const container = document.querySelector('.image-display');
+            const containerRect = container.getBoundingClientRect();
+            const maxWidth = containerRect.width - 48; // Account for padding
+            const minHeight = 400; // Minimum display height
+
+            const aspectRatio = imageWidth / imageHeight;
+            let newWidth = maxWidth;
+            let newHeight = newWidth / aspectRatio;
+
+            // Ensure minimum height of 400px
+            if (newHeight < minHeight) {
+                newHeight = minHeight;
+                newWidth = newHeight * aspectRatio;
+            }
+
+            // Ensure it fits within container width
+            if (newWidth > maxWidth) {
+                newWidth = maxWidth;
+                newHeight = newWidth / aspectRatio;
+            }
+
+            return { width: newWidth, height: newHeight };
+        }
+
+        // Render processed image with display scaling
+        function renderProcessedImage() {
+            if (!originalImage.src) return;
+
+            // Set canvas to original image size if not already set
+            if (originalWidth === 0 || originalHeight === 0) {
+                setCanvasToOriginalSize(originalCanvas, originalImage);
+                setCanvasToOriginalSize(processedCanvas, originalImage);
+                const displaySize = calculateDisplaySize(originalWidth, originalHeight);
+                displayWidth = displaySize.width;
+                displayHeight = displaySize.height;
+                originalCanvas.style.width = displayWidth + 'px';
+                originalCanvas.style.height = displayHeight + 'px';
+                processedCanvas.style.width = displayWidth + 'px';
+                processedCanvas.style.height = displayHeight + 'px';
+            }
+
+            // Draw original image at original size, scaled for display
+            originalCtx.clearRect(0, 0, originalWidth, originalHeight);
+            originalCtx.drawImage(originalImage, 0, 0, originalWidth, originalHeight);
+
+            // Draw and process the edited image at original size, scaled for display
+            processedCtx.clearRect(0, 0, originalWidth, originalHeight);
+            processedCtx.drawImage(originalImage, 0, 0, originalWidth, originalHeight);
+            const processedImageData = processedCtx.getImageData(0, 0, originalWidth, originalHeight);
+            applyFilters(processedCtx, processedImageData, adjustments);
+        }
+
+        // Handle file upload
+        function handleFileUpload(file) {
+            if (!file) return;
+
+            // Validate file size (10MB limit)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size too large. Please select an image under 10MB.');
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage.src = e.target.result;
+                originalImage.onload = () => {
+                    // Show processing area
+                    uploadContainer.style.display = 'none';
+                    imageProcessingContainer.style.display = 'grid';
+                    imageProcessingContainer.classList.remove('compare-view');
+
+                    // Reset UI state
+                    originalImageDisplay.classList.add('hidden');
+                    originalImageDisplay.style.display = 'none';
+                    processedImageDisplay.classList.remove('hidden');
+                    processedImageDisplay.style.display = 'flex';
+                    processedImageLabel.textContent = 'Edited Image';
+                    showCompareBtn.classList.remove('hidden');
+                    hideCompareBtn.classList.add('hidden');
+                    showCompareBtn.setAttribute('aria-pressed', 'false');
+                    hideCompareBtn.setAttribute('aria-pressed', 'false');
+
+                    // Render initial image
+                    renderProcessedImage();
+                    updateAdjustmentValues();
+
+                    // Add resize listener
+                    if (resizeListener) {
+                        window.removeEventListener('resize', resizeListener);
+                    }
+                    resizeListener = () => {
+                        clearTimeout(resizeTimeout);
+                        resizeTimeout = setTimeout(() => {
+                            const displaySize = calculateDisplaySize(originalWidth, originalHeight);
+                            displayWidth = displaySize.width;
+                            displayHeight = displaySize.height;
+                            originalCanvas.style.width = displayWidth + 'px';
+                            originalCanvas.style.height = displayHeight + 'px';
+                            processedCanvas.style.width = displayWidth + 'px';
+                            processedCanvas.style.height = displayHeight + 'px';
+                            renderProcessedImage();
+                        }, 150);
+                    };
+                    window.addEventListener('resize', resizeListener);
+
+                    // Announce to screen readers
+                    const announcement = document.createElement('div');
+                    announcement.setAttribute('aria-live', 'polite');
+                    announcement.setAttribute('aria-atomic', 'true');
+                    announcement.className = 'sr-only';
+                    announcement.textContent = 'Image uploaded successfully. You can now adjust the image settings.';
+                    document.body.appendChild(announcement);
+                    setTimeout(() => document.body.removeChild(announcement), 1000);
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Event listeners
+        imageUpload.addEventListener('change', (event) => {
+            handleFileUpload(event.target.files[0]);
+        });
+
+        // Drag and drop functionality
+        uploadContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadContainer.classList.add('drag-over');
+        });
+
+        uploadContainer.addEventListener('dragleave', (e) => {
+            if (!uploadContainer.contains(e.relatedTarget)) {
+                uploadContainer.classList.remove('drag-over');
+            }
+        });
+
+        uploadContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadContainer.classList.remove('drag-over');
+            handleFileUpload(e.dataTransfer.files[0]);
+        });
+
+        // Keyboard support for upload area
+        uploadContainer.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                imageUpload.click();
+            }
+        });
+
+        // Adjustment control event listeners
+        function createAdjustmentListener(property, valueElement) {
+            return (e) => {
+                adjustments[property] = parseInt(e.target.value);
+                valueElement.textContent = property === 'hue' ? 
+                    adjustments[property] + '°' : adjustments[property];
+                e.target.setAttribute('aria-valuenow', adjustments[property]);
+                renderProcessedImage();
+            };
+        }
+
+        temperatureControl.addEventListener('input', createAdjustmentListener('temperature', temperatureValue));
+        saturationControl.addEventListener('input', createAdjustmentListener('saturation', saturationValue));
+        brightnessControl.addEventListener('input', createAdjustmentListener('brightness', brightnessValue));
+        contrastControl.addEventListener('input', createAdjustmentListener('contrast', contrastValue));
+        hueControl.addEventListener('input', createAdjustmentListener('hue', hueValue));
+
+        // Preset button functionality
+        presetButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const presetName = button.getAttribute('data-preset');
+                if (presets[presetName]) {
+                    adjustments = { ...presets[presetName] };
+                    updateAdjustmentValues();
+                    renderProcessedImage();
+
+                    // Announce preset applied
+                    const announcement = document.createElement('div');
+                    announcement.setAttribute('aria-live', 'polite');
+                    announcement.className = 'sr-only';
+                    announcement.textContent = `${button.textContent} preset applied.`;
+                    document.body.appendChild(announcement);
+                    setTimeout(() => document.body.removeChild(announcement), 1000);
+                }
+            });
+        });
+
+        // Reset functionality - NOW ONLY RESETS ADJUSTMENTS
+        resetBtn.addEventListener('click', () => {
+            adjustments = {
+                temperature: 0,
+                saturation: 0,
+                brightness: 0,
+                contrast: 0,
+                hue: 0
+            };
+            updateAdjustmentValues();
+            renderProcessedImage();
+
+            // Announce reset
+            const announcement = document.createElement('div');
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.className = 'sr-only';
+            announcement.textContent = 'All adjustments have been reset to default values.';
+            document.body.appendChild(announcement);
+            setTimeout(() => document.body.removeChild(announcement), 1000);
+        });
+
+        // Compare functionality
+        showCompareBtn.addEventListener('click', () => {
+            imageProcessingContainer.classList.add('compare-view');
+            originalImageDisplay.classList.remove('hidden');
+            originalImageDisplay.style.display = 'flex';
+            processedImageDisplay.classList.remove('hidden');
+            processedImageDisplay.style.display = 'flex';
+            
+            processedImageLabel.textContent = 'After';
+            showCompareBtn.classList.add('hidden');
+            hideCompareBtn.classList.remove('hidden');
+            showCompareBtn.setAttribute('aria-pressed', 'true');
+            hideCompareBtn.setAttribute('aria-pressed', 'false');
+            
+            setTimeout(() => {
+                renderProcessedImage();
+            }, 10);
+        });
+
+        hideCompareBtn.addEventListener('click', () => {
+            imageProcessingContainer.classList.remove('compare-view');
+            originalImageDisplay.classList.add('hidden');
+            originalImageDisplay.style.display = 'none';
+            processedImageDisplay.classList.remove('hidden');
+            processedImageDisplay.style.display = 'flex';
+            
+            processedImageLabel.textContent = 'Edited Image';
+            hideCompareBtn.classList.add('hidden');
+            showCompareBtn.classList.remove('hidden');
+            hideCompareBtn.setAttribute('aria-pressed', 'true');
+            showCompareBtn.setAttribute('aria-pressed', 'false');
+            
+            setTimeout(() => {
+                renderProcessedImage();
+            }, 10);
+        });
+
+        // Download functionality
+        downloadImageBtn.addEventListener('click', () => {
+            if (!processedCanvas.width || !processedCanvas.height) {
+                alert('No image to download. Please upload an image first.');
+                return;
+            }
+
+            // Use original canvas dimensions for download
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = originalWidth;
+            tempCanvas.height = originalHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(processedCanvas, 0, 0, originalWidth, originalHeight);
+
+            const link = document.createElement('a');
+            link.download = `deyellowed-image-${Date.now()}.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+
+            // Announce download
+            const announcement = document.createElement('div');
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.className = 'sr-only';
+            announcement.textContent = 'Image download started.';
+            document.body.appendChild(announcement);
+            setTimeout(() => document.body.removeChild(announcement), 1000);
+        });
+
+        // COMPLETELY START OVER functionality - FULL RESET INCLUDING UI
+        uploadNewImageBtn.addEventListener('click', () => {
+            // Reset global state
+            originalImage.src = '';
+            originalWidth = 0;
+            originalHeight = 0;
+            displayWidth = 0;
+            displayHeight = 0;
+            adjustments = {
+                temperature: 0,
+                saturation: 0,
+                brightness: 0,
+                contrast: 0,
+                hue: 0
+            };
+
+            // Clear canvases
+            originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+            processedCtx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
+            originalCanvas.width = 0;
+            originalCanvas.height = 0;
+            processedCanvas.width = 0;
+            processedCanvas.height = 0;
+            originalCanvas.style.width = '';
+            originalCanvas.style.height = '';
+            processedCanvas.style.width = '';
+            processedCanvas.style.height = '';
+
+            // Reset UI state - RETURN TO UPLOAD VIEW
+            uploadContainer.style.display = 'flex';
+            imageProcessingContainer.style.display = 'none';
+            imageProcessingContainer.classList.remove('compare-view');
+            originalImageDisplay.classList.add('hidden');
+            originalImageDisplay.style.display = 'none';
+            processedImageDisplay.classList.remove('hidden');
+            processedImageDisplay.style.display = 'flex';
+            processedImageLabel.textContent = 'Edited Image';
+            showCompareBtn.classList.remove('hidden');
+            hideCompareBtn.classList.add('hidden');
+            showCompareBtn.setAttribute('aria-pressed', 'false');
+            hideCompareBtn.setAttribute('aria-pressed', 'false');
+            updateAdjustmentValues();
+
+            // Remove resize listener if it exists
+            if (resizeListener) {
+                window.removeEventListener('resize', resizeListener);
+                resizeListener = null;
+            }
+
+            // Clear file input
+            imageUpload.value = '';
+
+            // Focus upload area
+            setTimeout(() => uploadContainer.focus(), 100);
+
+            // Announce full reset
+            const announcement = document.createElement('div');
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.className = 'sr-only';
+            announcement.textContent = 'Starting over. You can now upload a new image.';
+            document.body.appendChild(announcement);
+            setTimeout(() => document.body.removeChild(announcement), 1000);
+        });
+
+        // Initialize
+        updateAdjustmentValues();
+
+        // Handle window resize (will be re-added on new upload)
+        let resizeTimeout;
+    </script>
+</body>
+</html>
