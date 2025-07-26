@@ -5,6 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatGPT DeYellower - Remove Yellow Tints from AI Images</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9S5D8FW6GY"></script>
+    <script>
+        // Replace GA_MEASUREMENT_ID with your actual Google Analytics Measurement ID
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-9S5D8FW6GY', {
+            // Enhanced measurement
+            enhanced_measurements: {
+                scrolls: true,
+                outbound_clicks: true,
+                site_search: false,
+                video_engagement: false,
+                file_downloads: true
+            }
+        });
+
+        // Custom event tracking functions
+        function trackEvent(eventName, parameters = {}) {
+            gtag('event', eventName, {
+                event_category: 'DeYellower_Interaction',
+                ...parameters
+            });
+            
+            // Also log to console for debugging (remove in production)
+            console.log('Analytics Event:', eventName, parameters);
+        }
+
+        // Track page engagement
+        gtag('event', 'page_view', {
+            page_title: 'DeYellower Tool',
+            page_location: window.location.href
+        });
+    </script>
     <style>
         :root {
             --primary-purple: #36069A;
@@ -68,7 +104,7 @@
         .upload-area {
             border: 3px dashed var(--neutral-border);
             border-radius: 1rem;
-            padding: 3rem;
+            padding: 2.5rem;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -99,16 +135,18 @@
         }
 
         .upload-text {
-            font-size: 1.25rem;
+            font-size: 1.125rem;
             color: var(--neutral-dark);
-            margin-bottom: 0.5rem;
-            font-weight: 600;
+            margin-bottom: 0.375rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
         }
 
         .upload-subtext {
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: var(--neutral-medium);
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.005em;
         }
 
         .choose-file-btn {
@@ -921,14 +959,28 @@
         function handleFileUpload(file) {
             if (!file) return;
 
+            // Track upload attempt
+            trackEvent('image_upload_attempt', {
+                file_size: file.size,
+                file_type: file.type
+            });
+
             // Validate file size (10MB limit)
             if (file.size > 10 * 1024 * 1024) {
+                trackEvent('upload_error', {
+                    error_type: 'file_too_large',
+                    file_size: file.size
+                });
                 alert('File size too large. Please select an image under 10MB.');
                 return;
             }
 
             // Validate file type
             if (!file.type.startsWith('image/')) {
+                trackEvent('upload_error', {
+                    error_type: 'invalid_file_type',
+                    file_type: file.type
+                });
                 alert('Please select a valid image file.');
                 return;
             }
@@ -937,6 +989,14 @@
             reader.onload = (e) => {
                 originalImage.src = e.target.result;
                 originalImage.onload = () => {
+                    // Track successful upload
+                    trackEvent('image_uploaded_success', {
+                        image_width: originalImage.naturalWidth,
+                        image_height: originalImage.naturalHeight,
+                        file_size: file.size,
+                        file_type: file.type
+                    });
+
                     // Show processing area
                     uploadContainer.style.display = 'none';
                     imageProcessingContainer.style.display = 'grid';
@@ -1022,12 +1082,23 @@
 
         // Adjustment control event listeners
         function createAdjustmentListener(property, valueElement) {
+            let adjustmentTimer;
             return (e) => {
                 adjustments[property] = parseInt(e.target.value);
                 valueElement.textContent = property === 'hue' ? 
                     adjustments[property] + '°' : adjustments[property];
                 e.target.setAttribute('aria-valuenow', adjustments[property]);
                 renderProcessedImage();
+
+                // Debounced tracking - only track after user stops adjusting for 1 second
+                clearTimeout(adjustmentTimer);
+                adjustmentTimer = setTimeout(() => {
+                    trackEvent('manual_adjustment', {
+                        adjustment_type: property,
+                        adjustment_value: adjustments[property],
+                        final_settings: JSON.stringify(adjustments)
+                    });
+                }, 1000);
             };
         }
 
@@ -1046,6 +1117,12 @@
                     updateAdjustmentValues();
                     renderProcessedImage();
 
+                    // Track preset usage
+                    trackEvent('preset_applied', {
+                        preset_name: presetName,
+                        preset_settings: JSON.stringify(presets[presetName])
+                    });
+
                     // Announce preset applied
                     const announcement = document.createElement('div');
                     announcement.setAttribute('aria-live', 'polite');
@@ -1059,6 +1136,7 @@
 
         // Reset functionality - NOW ONLY RESETS ADJUSTMENTS
         resetBtn.addEventListener('click', () => {
+            const previousSettings = JSON.stringify(adjustments);
             adjustments = {
                 temperature: 0,
                 saturation: 0,
@@ -1068,6 +1146,11 @@
             };
             updateAdjustmentValues();
             renderProcessedImage();
+
+            // Track reset action
+            trackEvent('adjustments_reset', {
+                previous_settings: previousSettings
+            });
 
             // Announce reset
             const announcement = document.createElement('div');
@@ -1092,6 +1175,11 @@
             showCompareBtn.setAttribute('aria-pressed', 'true');
             hideCompareBtn.setAttribute('aria-pressed', 'false');
             
+            // Track compare view
+            trackEvent('comparison_viewed', {
+                current_settings: JSON.stringify(adjustments)
+            });
+            
             setTimeout(() => {
                 renderProcessedImage();
             }, 10);
@@ -1110,6 +1198,9 @@
             hideCompareBtn.setAttribute('aria-pressed', 'true');
             showCompareBtn.setAttribute('aria-pressed', 'false');
             
+            // Track compare hide
+            trackEvent('comparison_hidden');
+            
             setTimeout(() => {
                 renderProcessedImage();
             }, 10);
@@ -1118,6 +1209,9 @@
         // Download functionality
         downloadImageBtn.addEventListener('click', () => {
             if (!processedCanvas.width || !processedCanvas.height) {
+                trackEvent('download_error', {
+                    error_type: 'no_image_available'
+                });
                 alert('No image to download. Please upload an image first.');
                 return;
             }
@@ -1130,9 +1224,25 @@
             tempCtx.drawImage(processedCanvas, 0, 0, originalWidth, originalHeight);
 
             const link = document.createElement('a');
-            link.download = `deyellowed-image-${Date.now()}.png`;
+            const filename = `deyellowed-image-${Date.now()}.png`;
+            link.download = filename;
             link.href = tempCanvas.toDataURL('image/png');
             link.click();
+
+            // Track successful download - this is a key conversion event!
+            trackEvent('image_downloaded', {
+                filename: filename,
+                final_settings: JSON.stringify(adjustments),
+                image_dimensions: `${originalWidth}x${originalHeight}`,
+                // Check if any adjustments were made
+                adjustments_made: Object.values(adjustments).some(val => val !== 0)
+            });
+
+            // Also track as a conversion
+            gtag('event', 'conversion', {
+                event_category: 'DeYellower_Success',
+                value: 1
+            });
 
             // Announce download
             const announcement = document.createElement('div');
@@ -1145,6 +1255,13 @@
 
         // COMPLETELY START OVER functionality - FULL RESET INCLUDING UI
         uploadNewImageBtn.addEventListener('click', () => {
+            // Track session reset
+            trackEvent('session_reset', {
+                previous_settings: JSON.stringify(adjustments),
+                had_image: originalImage.src !== '',
+                image_dimensions: originalWidth && originalHeight ? `${originalWidth}x${originalHeight}` : 'none'
+            });
+
             // Reset global state
             originalImage.src = '';
             originalWidth = 0;
